@@ -500,6 +500,16 @@ public class CarMarket extends Scene implements GameState, Runnable
 					if(vd)
 					{
 						Vehicle	car = new Vehicle(map, vd.id, vd.colorIndex, vd.optical, vd.power, vd.wear, vd.tear);
+
+						//RAXAT: build 938, broken vehicle descriptors patch
+						if(!car || !car.chassis)
+						{
+							int vt_patch = VehicleType.VS_STOCK;
+							if(used) vt_patch = VehicleType.VS_USED;
+							
+							VehicleDescriptor vd_patch = GameLogic.getVehicleDescriptor(vt_patch);
+							car = new Vehicle(map, vd_patch.id, vd_patch.colorIndex, vd_patch.optical, vd_patch.power, vd_patch.wear, vd_patch.tear);
+						}
 						car.chassis.setMileage((1-vd.wear)*10000000f);
 						processedIdx = idx;
 						addCar(car, i);

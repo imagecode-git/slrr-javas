@@ -513,7 +513,7 @@ public class Gates extends Dialog
 							GameLogic.garage.init();
 							GameLogic.changeActiveSection(GameLogic.garage);
 						}
-						else new WarningDialog(player.controller, Dialog.DF_MODAL|Dialog.DF_DEFAULTBG, "MULTIPLAYER", "We are switching to Steam Matchmaking, stay tuned!").display();
+						else new WarningDialog(player.controller, Dialog.DF_MODAL|Dialog.DF_DEFAULTBG, "MULTIPLAYER", GameLogic.serverMessage).display();
 						break;
 
 			case(CMD_EXTRAS):

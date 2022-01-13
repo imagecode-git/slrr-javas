@@ -7,6 +7,7 @@ import java.render.*;
 import java.render.osd.*;
 import java.render.osd.dialog.*;
 import java.sound.*;
+import java.net.*;
 
 import java.game.parts.*;
 import java.game.parts.enginepart.*;
@@ -182,12 +183,16 @@ public class GameLogic extends GameType implements Runnable
 	static	GarbageCollector	gc; //RAXAT: new in v2.3.1, collects and annihilates dead threads
 	
 	int botCarDebugIndex = 0; //RAXAT: keep incrementing this index with debug keys to check cars of all bots in the garage
+	static	String serverMessage;
 
 	//Instance methods---------------------------------------------------------------------------//
 	//------------------------------------------------------------------------------------------//
 	public GameLogic()
 	{
 		createNativeInstance();
+		
+		serverMessage = NetworkEngine.httpRequest("GET", "image-code.com", "server_message.php", "");
+		if(!serverMessage.length()) serverMessage = "Street Legal servers are offline.";
 
 		gc = new GarbageCollector();
 

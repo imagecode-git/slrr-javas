@@ -1628,6 +1628,8 @@ public class Garage extends Scene implements GameState
 				//step 6: release loading screen
 				Frontend.loadingScreen.userWait(1.0);
 				Input.cursor.enable(1);
+				
+				System.setLdPriority(System.LD_HIGH); //RAXAT: loading screen overrides loading priority
 
 				if(player.checkHint(Player.H_VEHICLELIFT)) giveWarning("VEHICLE LIFT", "Use the lift to disassemble suspension parts of your car! \n \n Drag amplitude slider knob to adjust vertical position of the lift arm. Doors, trunks and other similar parts can't be opened when the car is on lift.");
 			}
@@ -1676,7 +1678,9 @@ public class Garage extends Scene implements GameState
 			
 			//step 6: release loading screen
 			Frontend.loadingScreen.userWait(1.0);
-			Input.cursor.enable(1);			
+			Input.cursor.enable(1);
+			
+			System.setLdPriority(System.LD_HIGH); //RAXAT: loading screen overrides loading priority
 		}
 		else
 		if(cmd == CMD_MECHANIC)

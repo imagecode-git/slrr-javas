@@ -1151,7 +1151,7 @@ public class Garage extends Scene implements GameState
 				GameRef dest = new GameRef(param.token(++tok).intValue());
 				int cat = dest.getInfo(GameType.GII_CATEGORY);
 				
-				Part part = dest.getScriptInstance();
+				Object part = dest.getScriptInstance(); //RAXAT: fix for inventory panel right-click issue
 				if(part instanceof Part)
 				{
 					if(GameLogic.player.car && GameLogic.player.car.chassis && part.getCarRef().id() == GameLogic.player.car.chassis.getCarRef().id() ) //RAXAT: we check if it's a player's car, so other cars in the garage won't be affected

@@ -405,6 +405,8 @@ public class Garage extends Scene implements GameState
 		
 		setTargetPart(null); //selecting nothing in moving parts interface
 		enableControlHook();
+		
+		System.setLdPriority(System.LD_HIGH); //RAXAT: lagging loading fix
 	}
 	
 	public void control(float t)
@@ -519,6 +521,8 @@ public class Garage extends Scene implements GameState
 
 		player.controller.reset();
 		player.controller.activateState(ControlSet.MENUSET);
+		
+		System.setLdPriority(System.LD_NORM); //RAXAT: reverting back loading priority, see enter()
 	}
 
 	public void cameraSetup(GameRef cam)
@@ -1150,8 +1154,8 @@ public class Garage extends Scene implements GameState
 			{
 				GameRef dest = new GameRef(param.token(++tok).intValue());
 				int cat = dest.getInfo(GameType.GII_CATEGORY);
-				
-				Object part = dest.getScriptInstance(); //RAXAT: fix for inventory panel right-click issue
+
+				Object part = dest.getScriptInstance();
 				if(part instanceof Part)
 				{
 					if(GameLogic.player.car && GameLogic.player.car.chassis && part.getCarRef().id() == GameLogic.player.car.chassis.getCarRef().id() ) //RAXAT: we check if it's a player's car, so other cars in the garage won't be affected

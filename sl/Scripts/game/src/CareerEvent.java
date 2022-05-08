@@ -404,7 +404,7 @@ public class CareerEvent extends GameType
 					InventoryItem_Folder tmp = new InventoryItem_Folder(GameLogic.player.parts);
 					tmp.set = s;
 					s.build(tmp.inv);
-					GameLogic.player.parts.items.addElement(tmp);
+					tmp.copyToInventory(GameLogic.player.parts); //build 938, reversed parts order fix
 				}
 			}
 		}

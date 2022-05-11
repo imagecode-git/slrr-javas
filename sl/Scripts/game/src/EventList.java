@@ -10,7 +10,7 @@ import java.sound.*;
 import java.game.parts.*;
 import java.game.parts.enginepart.*;
 
-//RAXAT: next-generation game module, collects and describes all existing racing events
+//RAXAT: this menu collects and describes all existing racing events
 public class EventList implements GameState
 {
 	final static int MODE_AMATEUR	= 0x001;
@@ -52,33 +52,20 @@ public class Generator extends Dialog
 	final static int CMD_RACE  = 0x10E;
 	final static int CMD_PRIZE = 0x10F;
 
-	Thread	evgThread;
-	int	tMethods = 10; //amount of THOR methods
-
 	float	s_spacing = 0.625; //for shield generator
 	float	s_x; //shield initial x
 
 	ResourceRef res_upper_frame = new ResourceRef(frontend:0xC0A3r);
 	ResourceRef res_lower_frame = new ResourceRef(frontend:0xC0A0r);
 	ResourceRef[] res_shields = new ResourceRef[5];
-	ResourceRef[] res_shields_clone = new ResourceRef[5];
 	ResourceRef res_track_minimap;
 	ResourceRef res_stdBck = new ResourceRef(frontend:0xC00Ar);
 
 	Rectangle stdBck;
 	Rectangle upper_frame, lower_frame, trackPic, track_minimap, raceTitle;
-	Rectangle trackPic_clone, track_minimap_clone, raceTitle_clone;
 	Rectangle[] shields = new Rectangle[5];
-	Rectangle[] shields_clone = new Rectangle[5];
-
-	float anim_rect_delta = 6.7; //distance that travels each rectangle while being animated left/right
-	float anim_rect_speed = 0.5;
-	int anim_rect_steps = 20; //BASE steps!! they will be automatically recalculated and corrected using anim_rect_speed in this code
-	int anim_text_speed = 1; //must be the same in reData
 
 	int mode;
-	int anim_rect_status = -1; //describes which rectangle bundle is in use right now (-1: clone, 1: normal rect)
-	int firstRun = 1; //patch to fix errors connected with launching career events
 
 	Text	headerTxt, eventNumTxt, trackNameTxt;
 
@@ -88,7 +75,7 @@ public class Generator extends Dialog
 	Gadget button_race;
 
 	Requirements reData;
-	CareerEvent cEvent, cEvent_clone;
+	CareerEvent cEvent;
 
 	int goRaceStatus;
 	int currentEvent = 1;
@@ -126,23 +113,16 @@ public class Generator extends Dialog
 
 		if(mode != EventList.MODE_FREERIDE)
 		{
-			if(GameLogic.player.lastPlayedEvent) currentEvent = GameLogic.player.lastPlayedEvent; //buggy last event jump! game simply can't jump at last event index
+			if(GameLogic.player.lastPlayedEvent) currentEvent = GameLogic.player.lastPlayedEvent;
 		}
 
 		collectEvents();
-		if(!cEvent_clone) cEvent_clone = cEvent; //patch: fictive cEvent for special cases, when currentEvent = events.length
 
 		trackPic = osd.createRectangle( 0.0, 0.6, 2.6, 1.43, -1, cEvent.e_bck, 0 );
-		trackPic_clone = osd.createRectangle( 0.0+anim_rect_delta, 0.6, 2.6, 1.43, -1, cEvent_clone.e_bck, 0 );
-
 		raceTitle = osd.createRectangle( 0.065, -0.0825, 1.65, 0.17, 1, cEvent.title_res, 0 );
-		raceTitle_clone = osd.createRectangle( 0.065+anim_rect_delta, -0.0825, 1.65, 0.17, 1, cEvent_clone.title_res, 0 );
-
 		upper_frame = osd.createRectangle( 0.0, 1.325, 2.0, 0.22, 0, res_upper_frame, 0 );
 		lower_frame = osd.createRectangle( 0.0, -0.588, 1.488, 0.7, 2, res_lower_frame, 0 );
-
 		track_minimap = osd.createRectangle( 1.5, 0.52, 0.26, 0.47, 1, cEvent.e_minimap, 0 );
-		track_minimap_clone = osd.createRectangle( 1.5+anim_rect_delta, 0.52, 0.26, 0.47, 1, cEvent_clone.e_minimap, 0 );
 
 		addShields();
 		addButtons();
@@ -152,10 +132,6 @@ public class Generator extends Dialog
 		headerTxt = osd.createText( title, Frontend.largeFont, Text.ALIGN_LEFT, -0.98, -0.98 );
 		eventNumTxt = osd.createText( currentEvent + "/" + events.length, Frontend.largeFont, Text.ALIGN_LEFT, -0.98, -0.81 );
 		trackNameTxt = osd.createText( cEvent.e_trackName, Frontend.largeFont_strong, Text.ALIGN_RIGHT, 0.83, -0.81 );
-
-		//animation speed for animated text instances
-		trackNameTxt.a_speed = anim_text_speed;
-		eventNumTxt.a_speed = anim_text_speed;
 
 		reData = new Requirements(osd, cEvent, mode);
 
@@ -181,18 +157,6 @@ public class Generator extends Dialog
 			osd.createHotkey( Input.RCDIK_P, Input.KEY|Osd.HK_STATIC, CMD_PRIZE, this ); //aquire prize without race
 		}
 
-		evgThread = new Thread( this, "event list animation thread", 1 ); //extended! thread-oriented methodology (THOR), no injections
-		evgThread.setPriority(Thread.MAX_PRIORITY);
-		evgThread.start();
-
-		//initialize THOR methods
-		for(int i=0; i<(tMethods+1); i++)
-		{
-			evgThread.addMethod(i);
-		}
-
-		anim_rect_status *= (-1); //reverting status to -1 for operating with cloned rectangles
-
 		//debug:
 		//CareerEvent c = new CareerEvent();
 		//c.printVehicleClasses();
@@ -204,9 +168,6 @@ public class Generator extends Dialog
 
 	public void hide()
 	{
-		evgThread.stop();
-		evgThread=null;
-		
 		super.hide();
 		Input.cursor.enable(0);
 	}
@@ -215,61 +176,31 @@ public class Generator extends Dialog
 	public void addShields()
 	{
 		s_x = 1.925;
-
 		ResourceRef def = Osd.RRT_GHOST; //default transparent image
 
 		getShieldData(cEvent, res_shields);
-		getShieldData(cEvent_clone, res_shields_clone);
-
 		shields[0] = osd.createRectangle( s_x, 0.0, 0.12, 0.22, 1, def, 0 );
-		shields_clone[0] = osd.createRectangle( s_x+anim_rect_delta, 0.0, 0.12, 0.22, 1, def, 0 );
 
 		for(int j=1; j<5; j++)
 		{
 			shields[j] = osd.createRectangle( addSeparator(), 0.0, 0.12, 0.22, 1, def, 0 );
-			shields_clone[j] = osd.createRectangle( s_x+anim_rect_delta, 0.0, 0.12, 0.22, 1, def, 0 ); //s_x is used since separator is already added to it
 		}
 
 		updateShields();
-	}
-
-	public void destroyShields()
-	{
-		for( int i=0; i<shields.length; i++ )
-		{
-			if(shields[i]) shields[i].finalize();
-		}
-
-		for( int i=0; i<shields_clone.length; i++ )
-		{
-			if(shields_clone[i]) shields_clone[i].finalize();
-		}
 	}
 
 	//this does the texture update for all shields
 	public void updateShields()
 	{
 		getShieldData(cEvent, res_shields);
-		getShieldData(cEvent_clone, res_shields_clone);
 
 		//now scan for shieldData: if it returns null, assign default transparent image res; otherwise - assign a normal image res (retrieved from shieldData)
 		for(int i=0; i<5; i++)
 		{
-			if(anim_rect_status == -1)
+			if(shields[i])
 			{
-				if(shields[i])
-				{
-					if(res_shields[i]) shields[i].changeTexture(res_shields[i]);
-						else shields[i].changeTexture(Osd.RRT_GHOST); //default_transparent.png
-				}
-			}
-			else
-			{
-				if(shields_clone[i])
-				{
-					if(res_shields_clone[i]) shields_clone[i].changeTexture(res_shields_clone[i]);
-						else shields_clone[i].changeTexture(Osd.RRT_GHOST);
-				}
+				if(res_shields[i]) shields[i].changeTexture(res_shields[i]);
+				else shields[i].changeTexture(Osd.RRT_GHOST); //default_transparent.png
 			}
 		}
 	}
@@ -287,55 +218,58 @@ public class Generator extends Dialog
 			else shieldData[0] = null;
 		}
 
+		int resID = 0;
 		switch(event.drivetype)
 		{
 			case (CareerEvent.DRIVETYPE_FWD):
-			shieldData[1] = new ResourceRef(frontend:0xD10Cr);
+			resID = frontend:0xD10Cr;
 			break;
 
 			case (CareerEvent.DRIVETYPE_RWD):
-			shieldData[1] = new ResourceRef(frontend:0xD10Br);
+			resID = frontend:0xD10Br;
 			break;
 
 			case (CareerEvent.DRIVETYPE_AWD):
-			shieldData[1] = new ResourceRef(frontend:0xD10Dr);
-			break;
-
-			case 0:
-			shieldData[1] = null;
+			resID = frontend:0xD10Dr;
 			break;
 		}
+		
+		if(!resID) shieldData[1] = null;
+		shieldData[1] = (resID == 0) ? null : new ResourceRef(resID);
 
 		switch(event.carClass)
 		{
 			case (CareerEvent.CAR_CLASS_E):
-			shieldData[2] = new ResourceRef(frontend:0xD112r);
+			resID = frontend:0xD112r;
 			break;
 
 			case (CareerEvent.CAR_CLASS_D):
-			shieldData[2] = new ResourceRef(frontend:0xD111r);
+			resID = frontend:0xD111r;
 			break;
 
 			case (CareerEvent.CAR_CLASS_C):
-			shieldData[2] = new ResourceRef(frontend:0xD110r);
+			resID = frontend:0xD110r;
 			break;
 
 			case (CareerEvent.CAR_CLASS_B):
-			shieldData[2] = new ResourceRef(frontend:0xD10Fr);
+			resID = frontend:0xD10Fr;
 			break;
 
 			case (CareerEvent.CAR_CLASS_A):
-			shieldData[2] = new ResourceRef(frontend:0xD10Er);
+			resID = frontend:0xD10Er;
 			break;
 
 			case (CareerEvent.CAR_CLASS_S):
-			shieldData[2] = new ResourceRef(frontend:0xD113r);
+			resID = frontend:0xD113r;
 			break;
 
 			case 0:
-			shieldData[2] = null;
+			resID = 0;
 			break;
 		}
+		
+		if(!resID) shieldData[2] = null;
+		shieldData[2] = (resID == 0) ? null : new ResourceRef(resID);
 
 		if(event.careerGM.shieldIcon) shieldData[3] = event.careerGM.shieldIcon;
 			else shieldData[3] = null;
@@ -343,29 +277,31 @@ public class Generator extends Dialog
 		switch(CareerEvent.getEventStatus(event.eventName))
 		{
 			case (Gamemode.GMS_COMPLETED):
-			shieldData[4] = new ResourceRef(frontend:0xD114r);
+			resID = frontend:0xD114r;
 			break;
 
 			case (Gamemode.GMS_FAILED):
-			shieldData[4] = new ResourceRef(frontend:0xD115r);
+			resID = frontend:0xD115r;
 			break;
 
 			case (Gamemode.GMS_CUP_GOLD):
-			shieldData[4] = new ResourceRef(frontend:0xD154r);
+			resID = frontend:0xD154r;
 			break;
 
 			case (Gamemode.GMS_CUP_SILVER):
-			shieldData[4] = new ResourceRef(frontend:0xD155r);
+			resID = frontend:0xD155r;
 			break;
 
 			case (Gamemode.GMS_CUP_BRONZE):
-			shieldData[4] = new ResourceRef(frontend:0xD156r);
+			resID = frontend:0xD156r;
 			break;
 
 			case 0: //not registered
-			shieldData[4] = null;
+			resID = 0;
 			break;
 		}
+		
+		shieldData[4] = (resID == 0) ? null : new ResourceRef(resID);
 		
 		//raw shieldData collected, now rearrange it (remove the gaps inside it, if found any)
 		ResourceRef[] ripped = new ResourceRef[5];
@@ -384,7 +320,7 @@ public class Generator extends Dialog
 
 	public float addSeparator()
 	{
-		s_x-=s_spacing/2/osd.vpHeight;
+		s_x -= s_spacing/2/osd.vpHeight;
 
 		return s_x;
 	}
@@ -410,59 +346,16 @@ public class Generator extends Dialog
 		updateGoRace();
 	}
 
-	public void run()
-	{
-		for(;;)
-		{
-			//THOR methods
-			if(evgThread.methodStatus(0) == 1) //fadeIn all animated texts
-			{
-				updateText(); //update data in each text instance
-
-				eventNumTxt.restartAnimation();
-				eventNumTxt.fadeIn();
-
-				trackNameTxt.restartAnimation();
-				trackNameTxt.fadeIn();
-
-				for(int i=0; i<reData.maxlines; i++)
-				{
-					reData.conditions[i].restartAnimation();
-					reData.conditions[i].fadeIn();
-					reData.requirements[i].restartAnimation();
-					reData.requirements[i].fadeIn();
-				}
-
-				evgThread.controlMethod(0,-1);
-			}
-			//end of THOR
-
-			if(eventNumTxt.a_finished) evgThread.execute(0); //check params just for one text, since theese params are the same for all text animations in this class
-
-			evgThread.sleep(10);
-		}
-	}
-
 	public void prevEvent()
 	{
 		if( currentEvent > 1 )
 		{
 			currentEvent--;
-			GameRef xa = new GameRef();
-
 			cEvent = events[currentEvent-1];
-			cEvent_clone = events[currentEvent-1];
 
 			updateShields();
-			updateData(-1);
-
-			//---animation stuff
-			animateRect(-1); //rectangles
-			animateText(); //texts
-
-			anim_rect_status *= (-1);
-
-			if(firstRun) firstRun = 0;
+			updateData();
+			updateText();
 		}
 	}
 
@@ -471,71 +364,41 @@ public class Generator extends Dialog
 		if( currentEvent < events.length )
 		{
 			currentEvent++;
-			GameRef xa = new GameRef();
-
 			cEvent = events[currentEvent-1];
 			if(cEvent) cEvent.init();
 
-			cEvent_clone = events[currentEvent-1];
-			if(cEvent_clone) cEvent_clone.init();
-
-			updateData(1);
-
-			//---animation stuff
-			animateRect(1); //rectangles
-			animateText(); //texts
-
-			anim_rect_status *= (-1);
-
-			if(firstRun) firstRun = 0;
+			updateShields();
+			updateData();
+			updateText();
 		}
 	}
 
-	public void updateData(int dir)
+	public void updateData()
 	{
-		if(anim_rect_status == -1) raceTitle.changeTexture(cEvent.title_res);
-		else raceTitle_clone.changeTexture(cEvent_clone.title_res);
-
+		raceTitle.changeTexture(cEvent.title_res);
 		reData.c_event = cEvent;
 
-		updateTrack(1);
+		updateTrack();
 		updateShields();
 		updateBadges();
-		updateTrack(2);
 	}
 
 	public void updateText() //dedicated text update
 	{
 		eventNumTxt.changeText(currentEvent + "/" + events.length);
 		trackNameTxt.changeText(cEvent.e_trackName);
-		updateLine_L();
-		updateLine_R();
-	}
-
-	public void updateTrack(int stage)
-	{
-		//special texture update order
-		if(stage == 1)
+		
+		for(int i=0; i<reData.maxlines; i++)
 		{
-			if(anim_rect_status == -1) track_minimap.changeTexture(cEvent.e_minimap);
-			else track_minimap_clone.changeTexture(cEvent_clone.e_minimap);
-		}
-
-		if(stage == 2)
-		{
-			if(anim_rect_status == -1) trackPic.changeTexture(cEvent.e_bck);
-			else trackPic_clone.changeTexture(cEvent_clone.e_bck);
+			reData.conditions[i].changeText(cEvent.conditionText[i]); //update line L
+			reData.requirements[i].changeText(cEvent.reqText[i]); //update line R
 		}
 	}
 
-	public void updateLine_L()
+	public void updateTrack()
 	{
-		for(int i=0; i<reData.maxlines; i++) reData.conditions[i].changeText(cEvent.conditionText[i]);
-	}
-
-	public void updateLine_R()
-	{
-		for(int i=0; i<reData.maxlines; i++) reData.requirements[i].changeText(cEvent.reqText[i]);
+		track_minimap.changeTexture(cEvent.e_minimap);
+		trackPic.changeTexture(cEvent.e_bck);
 	}
 
 	public void updateBadges()
@@ -572,10 +435,6 @@ public class Generator extends Dialog
 
 		cEvent = events[currentEvent-1];
 		if(cEvent) cEvent.init(); //only selected cEvent must init
-
-		if(currentEvent < events.length) cEvent_clone = events[currentEvent]; //RAXAT: patch for last event
-		else cEvent_clone = cEvent;
-		if(cEvent_clone) cEvent_clone.init();
 	}
 
 	public void updateGoRace()
@@ -613,10 +472,10 @@ public class Generator extends Dialog
 	{
 		if(cEvent)
 		{
-			for(int i=0; i<cEvent.countRequirements(); i++)		{if(!cEvent.reqCheck(i)) 				return "You cannot participate in this event";		}
-			if(cEvent.fee)						{if(!cEvent.checkMoney(cEvent.fee)) 			return "Not enough cash to pay entry fee";		}
-			if(cEvent.carClass)					{if(cEvent.checkClass() != cEvent.carClass) 		return "You must pick a car of another class";		}
-			if(cEvent.drivetype)					{if(!cEvent.checkDriveType(cEvent.drivetype)) 		return "You need a car with another drivetype";		}
+			for(int i=0; i<cEvent.countRequirements(); i++)		{if(!cEvent.reqCheck(i)) 						return "You cannot participate in this event";	}
+			if(cEvent.fee)										{if(!cEvent.checkMoney(cEvent.fee)) 			return "Not enough cash to pay entry fee";		}
+			if(cEvent.carClass)									{if(cEvent.checkClass() != cEvent.carClass) 	return "You must pick a car of another class";	}
+			if(cEvent.drivetype)								{if(!cEvent.checkDriveType(cEvent.drivetype)) 	return "You need a car with another drivetype";	}
 			
 			if(cEvent.raceTime > 0)
 			{
@@ -631,88 +490,6 @@ public class Generator extends Dialog
 		}
 
 		return null;
-	}
-
-	//animations for moving left/right (universal method)
-	public void animateRect(Rectangle target, int direction) //inversed direction for easier use
-	{
-		int steps = anim_rect_steps*(1/anim_rect_speed);
-		float delta = anim_rect_delta/steps;
-		direction *= (-1);
-
-		target.restartAnimation("X");
-		target.setupAnimation(delta, steps, direction, "X");
-		target.a_speed = anim_rect_speed;
-		target.runThread(); //this begins the animation
-	}
-
-	//'unified' method for rectangle animation inside EventList
-	public void animateRect(int dir)
-	{
-		s_x = 1.925; //same as in addShields()
-
-		//prepare rectangles for animation
-		if(anim_rect_status == -1)
-		{
-			placeRect(trackPic, 0.0, dir);
-			placeRect(raceTitle, 0.065, dir);
-			placeRect(track_minimap, 1.5, dir);
-
-			if(shields[0]) placeRect(shields[0], s_x, dir);
-			for(int i=1; i<5; i++) if(shields[i]) placeRect(shields[i], addSeparator(), dir);
-		}
-		else
-		{
-			placeRect(trackPic_clone, 0.0, dir);
-			placeRect(raceTitle_clone, 0.065, dir);
-			placeRect(track_minimap_clone, 1.5, dir);
-
-			if(shields_clone[0]) placeRect(shields_clone[0], s_x, dir);
-			for(int i=1; i<5; i++) if(shields_clone[i]) placeRect(shields_clone[i], addSeparator(), dir);
-		}
-
-		//now move all rectangles
-		animateRect(trackPic, dir);
-		animateRect(trackPic_clone, dir);
-
-		animateRect(raceTitle, dir);
-		animateRect(raceTitle_clone, dir);
-
-		animateRect(track_minimap, dir);
-		animateRect(track_minimap_clone, dir);
-
-		for(int i=0; i<5; i++)
-		{
-			if(shields[i]) animateRect(shields[i], dir);
-			if(shields_clone[i]) animateRect(shields_clone[i], dir);
-		}
-	}
-
-	//more compact method for preparing objects for animation
-	public void placeRect(Rectangle target, float initX, int dir)
-	{
-		target.setPos(new Vector3( initX+(anim_rect_delta*dir), target.pos.y, target.pos.z ));
-	}
-
-	//fadeOut only! see method run() for text fadeIn
-	public void animateText()
-	{
-		if(evgThread.methodStatus(0) == -1) evgThread.switchStatus(0); //reset THOR for text animations
-
-		eventNumTxt.restartAnimation();
-		eventNumTxt.fadeOut();
-
-		trackNameTxt.restartAnimation();
-		trackNameTxt.fadeOut();
-
-		for(int i=0; i<reData.maxlines; i++)
-		{
-			reData.conditions[i].restartAnimation();
-			reData.conditions[i].fadeOut();
-
-			reData.requirements[i].restartAnimation();
-			reData.requirements[i].fadeOut();
-		}
 	}
 
 	public void freerideSetup()
@@ -734,89 +511,69 @@ public class Generator extends Dialog
 
 	public void osdCommand( int cmd )
 	{
-		if(!eventNumTxt.animationActive()) //kind of limiter, prevents visual bugs when attempting to interrupt interface animation
+		switch(cmd)
 		{
-			if( cmd == CMD_PREV )
+			case(CMD_PREV):
+			if(events.length > 1)
 			{
-				if(events.length > 1)
-				{
-					prevEvent();
-					updateGoRace();
-				}
+				prevEvent();
+				updateGoRace();
 			}
-
-			if( cmd == CMD_NEXT )
+			break;
+			
+			case(CMD_NEXT):
+			if(events.length > 1)
 			{
-				if(events.length > 1)
-				{
-					nextEvent();
-					updateGoRace();
-				}
+				nextEvent();
+				updateGoRace();
 			}
-		}
-
-		if( cmd == CMD_PRIZE )
-		{
+			break;
+			
+			case(CMD_PRIZE):
 			cEvent.aquirePrize();
 			new SfxRef(Frontend.SFX_NOTIF).play();
-		}
-
-		if( cmd == CMD_RACE )
-		{
+			break;
+			
+			case(CMD_RACE):
 			int debugOption = 0;
 
 			if(mode != EventList.MODE_FREERIDE) GameLogic.player.lastPlayedEvent = currentEvent; //we don't save last played event in freeride mode
-			if(anim_rect_status == -1 || firstRun)
+			if(!debugOption)
 			{
-				if(!debugOption)
-				{
-					if(mode == EventList.MODE_FREERIDE) freerideSetup();
-					else cEvent.syncRaceTime(); //apply time in the race event to the global time
-					GameLogic.changeActiveSection(new Track(cEvent.careerGM, cEvent, cEvent.track));
-				}
-				else
-				{
-					switch(debugOption)
-					{
-						case 1:
-							System.print("EventList: CMD_RACE is called for cEvent", System.PF_CRITICAL);
-							break;
-					}
-				}
+				if(mode == EventList.MODE_FREERIDE) freerideSetup();
+				else cEvent.syncRaceTime(); //apply time in the race event to the global time
+				GameLogic.changeActiveSection(new Track(cEvent.careerGM, cEvent, cEvent.track));
 			}
 			else
 			{
-				if(!debugOption)
+				switch(debugOption)
 				{
-					if(mode == EventList.MODE_FREERIDE) freerideSetup();
-					else cEvent_clone.syncRaceTime(); //apply time in the race event to the global time
-					GameLogic.changeActiveSection(new Track(cEvent_clone.careerGM, cEvent_clone, cEvent_clone.track));
-				}
-				else
-				{
-					switch(debugOption)
-					{
-						case 1:
-							System.print("EventList: CMD_RACE is called for cEvent_clone", System.PF_CRITICAL);
-							break;
-					}
+					case 1:
+						System.print("EventList: CMD_RACE is called for cEvent", System.PF_CRITICAL);
+						break;
 				}
 			}
-		}
-
-		if( cmd == CMD_EXIT )
-		{
-			if(myPrevState instanceof MainMenu) GameLogic.changeActiveSection(myPrevState);
-			else if(myPrevState instanceof Track && !GameLogic.carrerInProgress) GameLogic.changeActiveSection(new MainMenu());
+			break;
+			case(CMD_EXIT):
+			if(myPrevState instanceof MainMenu)
+			{
+				GameLogic.changeActiveSection(myPrevState);
+			}
+			else if(myPrevState instanceof Track && !GameLogic.carrerInProgress)
+			{
+				GameLogic.changeActiveSection(new MainMenu());
+			}
 			else GameLogic.changeActiveSection(GameLogic.garage);
-		}
-		
-		if( cmd == CMD_INFO )
-		{
+			break;
+			
+			case(CMD_INFO):
 			new WarningDialog(player.controller, Dialog.DF_MODAL|Dialog.DF_DEFAULTBG, "INFORMATION", "You may need to build a car with specific engine power to match one of these classes and participate in racing events: (sorted by engine power) \n \n Class E: 0-160HP \n Class D: 160-300HP \n Class C: 300-500HP \n Class B: 500-700HP \n Class A: 700-1000HP \n Class S: Over 1000HP \n").display();
+			break;
+			
+			case(Input.AXIS_CANCEL):
+			osdCommand(CMD_EXIT);
+			break;
 		}
-
-		if( cmd == Input.AXIS_CANCEL ) osdCommand(CMD_EXIT);
 	}
 }
 
@@ -855,7 +612,6 @@ class Requirements
 	ResourceRef res_complyBadgeDN = new ResourceRef(frontend:0xD101r);
 
 	CareerEvent c_event;
-	int anim_text_speed = 1; //EventList set this up itself
 	int e_mode; //mode of EventList
 
 	public Requirements( Osd o, CareerEvent ce, int mode )
@@ -913,14 +669,12 @@ class Requirements
 	public void createLine_L( int line )
 	{
 		conditions[line] = osd.createText( c_event.conditionText[line], Frontend.mediumFont, Text.ALIGN_LEFT, xleft, ypos );
-		conditions[line].a_speed = anim_text_speed;
 		separator_b[line] = osd.createRectangle( xleft_ls, ypos_ls, 0.376, 0.008, 3, res_separator_b, 0 );
 	}
 
 	public void createLine_R( int line )
 	{
 		requirements[line] = osd.createText( c_event.reqText[line], Frontend.mediumFont, Text.ALIGN_LEFT, xright, ypos );
-		requirements[line].a_speed = anim_text_speed;
 		separator_b[line+maxlines] = osd.createRectangle( xright_ls, ypos_ls, 0.376, 0.008, 3, res_separator_b, 0 );
 	}
 

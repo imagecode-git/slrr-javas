@@ -197,7 +197,6 @@ public class GameLogic extends GameType implements Runnable
 		gc = new GarbageCollector();
 
 		//RAXAT: v2.3.1, achievement of these goals will open up access to the hidden options menu, see EventList.class for more info
-		//toDo: make a menu where player could check achievements
 		goals = new CareerGoal[3];
 		goals[0] = new CareerGoal(0x0001, "Become a top racer in the Red Flames club");
 		goals[1] = new CareerGoal(0x0002, "Collect $1 000 000 of cash");
@@ -272,36 +271,10 @@ public class GameLogic extends GameType implements Runnable
 		new SfxRef( City.RID_SPEECHGO ).cache();
 		new SfxRef( City.RID_SFX_DAY_WIN ).cache();
 		new SfxRef( City.RID_SFX_DAY_LOOSE ).cache();
-
-		//open all needed libraries:
-		System.rpkScan( "parts\\engines\\" );
-		System.rpkScan( "parts\\" );
-		System.rpkScan( "cars\\racers\\" );
-		System.rpkScan( "cars\\fake_racers\\" );
-		System.rpkScan( "maps\\" );
-		System.rpkScan( "sl\\Scripts\\game\\CareerEvents\\" ); //RAXAT: event scanner in EventList.class wont work without this
 		
-		Steam.postInit();
-
-		//RAXAT: open all track data RPK's
-		FindFile ff = new FindFile();
-		String path = "multibot\\maps\\";
-		String name=ff.first(path + "*", FindFile.DIRS_ONLY);
-		while(name)
-		{
-			System.rpkScan(path+name+"\\");
-			name = ff.next();
-		}
-		ff.close();
-		
-		initVehicleTypes();
-
-		preCacheGametypes( new GameRef( humans:0x00000001r ) );
-		preCacheGametypes( new GameRef( cars:0x00000004r ) );	//traffic cars
-
 		//init controllers
 		controllers = new GameRef[numplayers];
-
+		
 		//select the controllers who will play
 		int[] joined = new int[Input.MAXPLAYERS];
 		int i;
@@ -333,6 +306,51 @@ public class GameLogic extends GameType implements Runnable
 		//def controlset state:
 		player.controller.reset();
 		player.controller.activateState(ControlSet.MENUSET);
+		
+		hotkey0 = new Hotkey( Input.AXIS_MUSIC_VOLUME_UP, Input.VIRTUAL, Input.AXIS_MUSIC_VOLUME_UP, this );
+		hotkey1 = new Hotkey( Input.AXIS_MUSIC_VOLUME_DOWN, Input.VIRTUAL, Input.AXIS_MUSIC_VOLUME_DOWN, this );
+		hotkey2 = new Hotkey( Input.AXIS_MUSIC_SELECT_NEXT, Input.VIRTUAL, Input.AXIS_MUSIC_SELECT_NEXT, this );
+		hotkey3 = new Hotkey( Input.AXIS_MUSIC_SELECT_PREV, Input.VIRTUAL, Input.AXIS_MUSIC_SELECT_PREV, this );
+		hotkey4 = new Hotkey( Input.AXIS_PRINTSCREEN,	Input.VIRTUAL, Input.AXIS_PRINTSCREEN, this );
+
+		//RAXAT: debug keys, temp
+		//hotkey5 = new Hotkey( Input.RCDIK_Z, Input.KEY, Input.AXIS_CLUTCH, this ); //Z
+		//hotkey6 = new Hotkey( Input.RCDIK_X, Input.KEY, Input.AXIS_HORN, this ); //X
+		//hotkey7 = new Hotkey( Input.RCDIK_C, Input.KEY, Input.AXIS_GEAR_UPDOWN, this ); //C
+		
+		//RAXAT: build 938, prevents crashes if Steam dependencies are not properly loaded or installed
+		if(!Steam.postInit()) //RAXAT: postInit() returns int since build 938
+		{
+			Frontend.loadingScreen.hide(); //unlocks cursor
+			Input.cursor.enable(1);
+			
+			new WarningDialog(player.controller, Dialog.DF_MODAL|Dialog.DF_DEFAULTBG, "ERROR", "There is a problem with the installation of your game. Please, make sure Steam is running and there is no INSTALL button when you browse the game in your library. If you still have this message, try removing all game files and reinstalling it on Steam.").display();
+			System.exit();
+		}
+
+		//open all needed libraries:
+		System.rpkScan( "parts\\engines\\" );
+		System.rpkScan( "parts\\" );
+		System.rpkScan( "cars\\racers\\" );
+		System.rpkScan( "cars\\fake_racers\\" );
+		System.rpkScan( "maps\\" );
+		System.rpkScan( "sl\\Scripts\\game\\CareerEvents\\" ); //RAXAT: event scanner in EventList.class wont work without this
+
+		//RAXAT: open all track data RPK's
+		FindFile ff = new FindFile();
+		String path = "multibot\\maps\\";
+		String name=ff.first(path + "*", FindFile.DIRS_ONLY);
+		while(name)
+		{
+			System.rpkScan(path+name+"\\");
+			name = ff.next();
+		}
+		ff.close();
+		
+		initVehicleTypes();
+
+		preCacheGametypes( new GameRef( humans:0x00000001r ) );
+		preCacheGametypes( new GameRef( cars:0x00000004r ) );	//traffic cars
 
 		garage = new Garage();
 
@@ -356,17 +374,6 @@ public class GameLogic extends GameType implements Runnable
 		}
 
 		careerComplete(); //RAXAT: now checking career completion status
-		
-		hotkey0 = new Hotkey( Input.AXIS_MUSIC_VOLUME_UP, Input.VIRTUAL, Input.AXIS_MUSIC_VOLUME_UP, this );
-		hotkey1 = new Hotkey( Input.AXIS_MUSIC_VOLUME_DOWN, Input.VIRTUAL, Input.AXIS_MUSIC_VOLUME_DOWN, this );
-		hotkey2 = new Hotkey( Input.AXIS_MUSIC_SELECT_NEXT, Input.VIRTUAL, Input.AXIS_MUSIC_SELECT_NEXT, this );
-		hotkey3 = new Hotkey( Input.AXIS_MUSIC_SELECT_PREV, Input.VIRTUAL, Input.AXIS_MUSIC_SELECT_PREV, this );
-		hotkey4 = new Hotkey( Input.AXIS_PRINTSCREEN,	Input.VIRTUAL, Input.AXIS_PRINTSCREEN, this );
-
-		//RAXAT: debug keys, temp
-		//hotkey5 = new Hotkey( Input.RCDIK_Z, Input.KEY, Input.AXIS_CLUTCH, this ); //Z
-		//hotkey6 = new Hotkey( Input.RCDIK_X, Input.KEY, Input.AXIS_HORN, this ); //X
-		//hotkey7 = new Hotkey( Input.RCDIK_C, Input.KEY, Input.AXIS_GEAR_UPDOWN, this ); //C
 
 		timeRefresher = new Thread( this, "Game time refresher" );
 		timeRefresher.start();
@@ -399,7 +406,7 @@ public class GameLogic extends GameType implements Runnable
 
 	public void finalize()
 	{
-		timeRefresher.stop();
+		if(timeRefresher) timeRefresher.stop();
 
 		hotkey0.inactivate();
 		hotkey1.inactivate();

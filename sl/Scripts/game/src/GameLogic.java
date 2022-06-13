@@ -312,6 +312,8 @@ public class GameLogic extends GameType implements Runnable
 		hotkey2 = new Hotkey( Input.AXIS_MUSIC_SELECT_NEXT, Input.VIRTUAL, Input.AXIS_MUSIC_SELECT_NEXT, this );
 		hotkey3 = new Hotkey( Input.AXIS_MUSIC_SELECT_PREV, Input.VIRTUAL, Input.AXIS_MUSIC_SELECT_PREV, this );
 		hotkey4 = new Hotkey( Input.AXIS_PRINTSCREEN,	Input.VIRTUAL, Input.AXIS_PRINTSCREEN, this );
+		
+		setEventMask( EVENT_HOTKEY|EVENT_TIME );
 
 		//RAXAT: debug keys, temp
 		//hotkey5 = new Hotkey( Input.RCDIK_Z, Input.KEY, Input.AXIS_CLUTCH, this ); //Z
@@ -377,8 +379,6 @@ public class GameLogic extends GameType implements Runnable
 
 		timeRefresher = new Thread( this, "Game time refresher" );
 		timeRefresher.start();
-
-		setEventMask( EVENT_HOTKEY|EVENT_TIME );
 
 		addTimer( timeRefreshRate, 0 );	//simulated game time counter trigger
 

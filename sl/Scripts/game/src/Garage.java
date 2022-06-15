@@ -406,7 +406,7 @@ public class Garage extends Scene implements GameState
 		setTargetPart(null); //selecting nothing in moving parts interface
 		enableControlHook();
 		
-		System.setLdPriority(System.LD_HIGH); //RAXAT: lagging loading fix
+		//System.setLdPriority(System.LD_HIGH); //RAXAT: lagging loading fix
 	}
 	
 	public void control(float t)
@@ -522,7 +522,7 @@ public class Garage extends Scene implements GameState
 		player.controller.reset();
 		player.controller.activateState(ControlSet.MENUSET);
 		
-		System.setLdPriority(System.LD_NORM); //RAXAT: reverting back loading priority, see enter()
+		//System.setLdPriority(System.LD_NORM); //RAXAT: reverting back loading priority, see enter()
 	}
 
 	public void cameraSetup(GameRef cam)
@@ -767,7 +767,7 @@ public class Garage extends Scene implements GameState
 		
 		m = osd.createMenu(buttonStyle, -0.75, -0.8575, 0, Osd.MD_HORIZONTAL);
 		m.setSliderStyle(sld_lh, sld_k);
-		osd.createText("Lift arm amplitude", Frontend.largeFont, Text.ALIGN_LEFT,	-0.975, -0.89);
+		osd.createText("Lift arm height", Frontend.largeFont, Text.ALIGN_LEFT,	-0.975, -0.89);
 		liftArmAmplitudeSlider = m.addItem(null, CMD_LIFT_ARM_MOVE, liftArmAmplitude, 0.0, LIFT_ARM_AMPLITUDE_MAX, LIFT_ARM_AMPLITUDE_MAX/LIFT_ARM_AMPLITUDE_STEP, null);
 		osd.hideGroup(liftGroup = osd.endGroup());
 		
@@ -1629,7 +1629,7 @@ public class Garage extends Scene implements GameState
 				Frontend.loadingScreen.userWait(1.0);
 				Input.cursor.enable(1);
 				
-				System.setLdPriority(System.LD_HIGH); //RAXAT: loading screen overrides loading priority
+				//System.setLdPriority(System.LD_HIGH); //RAXAT: loading screen overrides loading priority
 
 				if(player.checkHint(Player.H_VEHICLELIFT)) giveWarning("VEHICLE LIFT", "Use the lift to disassemble suspension parts of your car! \n \n Drag amplitude slider knob to adjust vertical position of the lift arm. Doors, trunks and other similar parts can't be opened when the car is on lift.");
 			}
@@ -1680,7 +1680,7 @@ public class Garage extends Scene implements GameState
 			Frontend.loadingScreen.userWait(1.0);
 			Input.cursor.enable(1);
 			
-			System.setLdPriority(System.LD_HIGH); //RAXAT: loading screen overrides loading priority
+			//System.setLdPriority(System.LD_HIGH); //RAXAT: loading screen overrides loading priority
 		}
 		else
 		if(cmd == CMD_MECHANIC)

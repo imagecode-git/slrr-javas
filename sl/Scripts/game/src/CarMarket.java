@@ -1055,6 +1055,12 @@ public class CarMarket extends Scene implements GameState, Runnable
 					if(GameLogic.gameMode == GameLogic.GM_MULTIPLAYER) multiplayer.spendMoney(-price);
 					refreshMoneyString();
 
+					//g13ba: this seems to avoid the "Buy, Buy, Sell" crash at Carlot.java 
+					releasePlayerCar();
+					player.carlot.lockPlayerCar();
+					player.carlot.releasePlayerCar();
+					lockPlayerCar();
+
  					//remove car;
 					cars[curcar].command("reset");
 					cars[curcar].command("start");

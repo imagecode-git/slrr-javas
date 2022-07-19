@@ -507,8 +507,24 @@ public class CarMarket extends Scene implements GameState, Runnable
 							int vt_patch = VehicleType.VS_STOCK;
 							if(used) vt_patch = VehicleType.VS_USED;
 							
-							VehicleDescriptor vd_patch = GameLogic.getVehicleDescriptor(vt_patch);
-							car = new Vehicle(map, vd_patch.id, vd_patch.colorIndex, vd_patch.optical, vd_patch.power, vd_patch.wear, vd_patch.tear);
+							//g13ba: new vehicle descriptor could be broken as well due to bad mods
+							//try a few times
+							int tries;
+							VehicleDescriptor vd_patch;
+							while((!car || !car.chassis) && tries < 3)
+							{
+								vd_patch = GameLogic.getVehicleDescriptor(vt_patch);
+								car = new Vehicle(map, vd_patch.id, vd_patch.colorIndex, vd_patch.optical, vd_patch.power, vd_patch.wear, vd_patch.tear);
+								tries++;
+							}
+							//skip if still bad
+							if(!car || !car.chassis) continue;
+							
+							//g13ba: store the new vehicle descriptor
+							carDescriptors[idx] = vd_patch;
+							
+							//set vd for proper vd.wear at setMileage
+							vd = vd_patch;
 						}
 						car.chassis.setMileage((1-vd.wear)*10000000f);
 						processedIdx = idx;

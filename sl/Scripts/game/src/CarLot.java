@@ -247,11 +247,12 @@ public class CarLot extends GameType implements GameState
 	//writes out car to disk (call this before saving)
 	public void saveCar( int slot )
 	{
-		File.delete( GameLogic.tempSaveDir + "PlayerCar" + slot );
-		File.delete( GameLogic.tempSaveDir, "PlayerCar" + slot + ".*" );
-
-		if( carSlots[slot] )
+		if(carSlots[slot] && cars[slot])
+		{
+			File.delete( GameLogic.tempSaveDir + "PlayerCar" + slot );
+			File.delete( GameLogic.tempSaveDir, "PlayerCar" + slot + ".*" );
 			cars[slot].save( GameLogic.tempSaveDir + "PlayerCar" + slot );
+		}
 	}
 
 	public int isEmpty()
@@ -278,9 +279,9 @@ public class CarLot extends GameType implements GameState
 	
 	public void loadCar( int slot )
 	{
-		if( carSlots[slot] && !cars[slot] )
+		if( carSlots[slot] && !cars[slot] && File.exists(GameLogic.tempSaveDir + "PlayerCar" + slot) )
 		{
-			addCar( Vehicle.load( GameLogic.tempSaveDir + "PlayerCar" + curcar, map ), curcar );
+			addCar( Vehicle.load( GameLogic.tempSaveDir + "PlayerCar" + slot, map ), slot );
 		}
 	}
 
